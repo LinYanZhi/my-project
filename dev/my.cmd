@@ -18,10 +18,13 @@ if defined _MY_ENV_ACTIVATED (
 
 @REM my list - List environments
 if "%~1" equ "list" (
-    echo Environments available:
-    echo ======================
+    echo [90menvs:[0m
     for /d %%i in ("%~dp0envs\*") do (
-        echo   %%~nxi
+        if "%_MY_CURRENT_ENV%"=="%%~nxi" (
+            echo [92m  * %%~nxi[0m
+        ) else (
+            echo     %%~nxi
+        )
     )
     goto :EOF
 ) else if "%~1" equ "reset" (
