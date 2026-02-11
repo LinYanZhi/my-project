@@ -13,7 +13,7 @@ goto SKIP_ACTIVATION_CHECK
 
 :CHECK_ACTIVATED
 if defined _MY_ENV_ACTIVATED (
-    echo Error: Environment is already activated. Use "my d" to deactivate first.
+    echo [31mError: Environment is already activated. Use [0m[94m"my d"[0m[31m to deactivate first.[0m
     goto :EOF
 )
 
@@ -31,11 +31,11 @@ if "%~1" equ "help" goto SHOW_HELP
 goto SHOW_ERROR
 
 :LIST_ENVS
-echo Available environments:
+echo [90mAvailable environments:[0m
 if exist "%~dp0envs" (
     for /d %%i in ("%~dp0envs\*") do (
         if "%_MY_CURRENT_ENV%"=="%%~nxi" (
-            echo   * %%~nxi
+            echo   [92m* %%~nxi[0m
         ) else (
             echo     %%~nxi
         )
@@ -47,14 +47,14 @@ goto :EOF
 
 :ACTIVATE_ENV
 if "%~2"=="" (
-    echo Error: Usage: my a env_name
+    echo [31mError: Usage: my a env_name[0m
     goto :EOF
 )
-echo Activating environment: `%~2`
+echo [90mActivating environment:[0m `%~2`
 
 @REM Check if environment exists
 if not exist "%~dp0envs\%~2" (
-    echo Error: Environment "%~2" does not exist.
+    echo [31mError: Environment [0m[94m"%~2"[0m[31m does not exist.[0m
     goto :EOF
 )
 
@@ -66,8 +66,8 @@ if "%~3" equ "-f" set "_MY_FORCE=1"
 @REM Check if WT_SESSION is defined
 if not defined WT_SESSION (
     @REM Only variable values WT_SESSION are allowed to be used as file names
-    echo Error: WT_SESSION environment variable is not defined.
-    echo This script requires WT_SESSION to save/restore environment.
+    echo [31mError: WT_SESSION environment variable is not defined.[0m
+    echo [33mThis script requires WT_SESSION to save/restore environment.[0m
     goto :EOF
 )
 
@@ -78,7 +78,7 @@ set "_MY_OLD_PROMPT=%PROMPT%"
 set "_ENV_HISTORY_FILE=%~dp0%WT_SESSION%.bat"
 echo @echo off > "%_ENV_HISTORY_FILE%"
 if errorlevel 1 (
-    echo Error: Failed to create environment history file: %_ENV_HISTORY_FILE%
+    echo [31mError: Failed to create environment history file: [0m[90;4m%_ENV_HISTORY_FILE%[0m
     @REM Clear temporary variables
     set "_ENV_HISTORY_FILE="
     set "_MY_OLD_PROMPT="
@@ -95,87 +95,64 @@ for /f "delims==" %%a in ('set') do (
 @REM Also include variables from variable.ini in environment history
 set "_VAR_INI=%~dp0envs\%~2\variable.ini"
 if exist "%_VAR_INI%" (
-    @REM Read variable.ini file and add variables to environment history
-    for /f "usebackq tokens=1,2 delims==" %%a in ("%_VAR_INI%") do (
-        @REM Skip comment lines
-        echo %%a | findstr /B "#" >nul
+    @REM Use read.exe to filter comments and empty lines, then process key=value pairs
+    for /f "tokens=1,2 delims==" %%a in ('read "%_VAR_INI%" -c "#" --skip-comments --skip-empty') do (
+        @REM Check if variable already exists in environment history
+        call :CHECK_VAR_EXISTS "%%a" "%_ENV_HISTORY_FILE%"
         if errorlevel 1 (
-            @REM Skip empty lines
-            if not "%%a"=="" (
-                @REM Check if variable already exists in environment history
-                @REM Use call to execute findstr and check errorlevel
-                call :CHECK_VAR_EXISTS "%%a" "%_ENV_HISTORY_FILE%"
-                if errorlevel 1 (
-                    @REM Variable doesn't exist in current environment, add it as empty
-                    echo set "%%a=" >> "%_ENV_HISTORY_FILE%"
-                )
-            )
+            @REM Variable doesn't exist in current environment, add it as empty
+            echo set "%%a=" >> "%_ENV_HISTORY_FILE%"
         )
     )
 )
 set "_VAR_INI="
 
-echo Environment history saved to: %WT_SESSION%.bat
+echo [90mEnvironment history saved to: [0m[90;4m%WT_SESSION%.bat[0m
 
-@REM Load path.ini
+@REM Load path.ini using read.exe (much simpler and more powerful)
 set "_PATH_INI=%~dp0envs\%~2\path.ini"
 if exist "%_PATH_INI%" (
-    @REM Read path.ini file line by line and add paths directly
-    @REM Simple approach: add paths one by one in file order
-    for /f "usebackq delims=" %%a in ("%_PATH_INI%") do (
-        @REM Skip comment lines
-        echo %%a | findstr /B "#" >nul 2>&1
-        if errorlevel 1 (
-            @REM Skip empty lines
-            if not "%%a"=="" (
-                @REM Check if path exists (unless force is enabled)
-                if "%_MY_FORCE%"=="0" (
-                    if not exist "%%a" (
-                        echo Skipping non-existent path: %%a
-                    ) else (
-                        @REM Add path to the beginning of PATH
-                        echo Adding path: %%a
-                        call set "PATH=%%a;%%PATH%%"
-                    )
-                ) else (
-                    @REM Force mode - add path regardless of existence
-                    echo Adding path: %%a
-                    call set "PATH=%%a;%%PATH%%"
-                )
+    @REM Use read.exe to filter comments and empty lines
+    for /f "delims=" %%a in ('read "%_PATH_INI%" -c "#" --skip-comments --skip-empty') do (
+        @REM Check if path exists (unless force is enabled)
+        if "%_MY_FORCE%"=="0" (
+            if not exist "%%a" (
+                        echo   [33mSkip path: [0m[90;4m%%a[0m
+            ) else (
+                @REM Add path to the beginning of PATH
+                echo Adding path: [90;4m%%a[0m
+                call set "PATH=%%a;%%PATH%%"
             )
+        ) else (
+            @REM Force mode - add path regardless of existence
+            echo Adding path: [90;4m%%a[0m
+            call set "PATH=%%a;%%PATH%%"
         )
     )
 
     echo on
-    echo PATH updated successfully
+    echo [92mPATH updated successfully[0m
     echo off
 )
 
-@REM Load variable.ini
+@REM Load variable.ini using read.exe
 set "_VAR_INI=%~dp0envs\%~2\variable.ini"
 set "_MY_ENV_CLEAN_FILE=%~dp0%WT_SESSION%_clean.bat"
 if exist "%_VAR_INI%" (
-    @REM Read variable.ini file line by line
-    for /f "usebackq tokens=1,2 delims==" %%a in ("%_VAR_INI%") do (
-        @REM Skip comment lines
-        echo %%a | findstr /B "#" >nul 2>&1
-        if errorlevel 1 (
-            @REM Skip empty lines
-            if not "%%a"=="" (
-                @REM Save original value (empty if not defined)
-                set "_TEMP_VAR=%%%%a%%"
-                for /f "delims=" %%v in ('cmd /c "echo.%_TEMP_VAR%"') do (
-                    if "%%v"=="" (
-                        echo set "%%a=" >> "%_MY_ENV_CLEAN_FILE%"
-                    ) else (
-                        echo set "%%a=%%v" >> "%_MY_ENV_CLEAN_FILE%"
-                    )
-                )
-                set "_TEMP_VAR="
-                @REM Set the new value
-                set "%%a=%%b"
+    @REM Use read.exe to filter comments and empty lines, then process key=value pairs
+    for /f "tokens=1,2 delims==" %%a in ('read "%_VAR_INI%" -c "#" --skip-comments --skip-empty') do (
+        @REM Save original value (empty if not defined)
+        set "_TEMP_VAR=%%%%a%%"
+        for /f "delims=" %%v in ('cmd /c "echo.%_TEMP_VAR%"') do (
+            if "%%v"=="" (
+                echo set "%%a=" >> "%_MY_ENV_CLEAN_FILE%"
+            ) else (
+                echo set "%%a=%%v" >> "%_MY_ENV_CLEAN_FILE%"
             )
         )
+        set "_TEMP_VAR="
+        @REM Set the new value
+        set "%%a=%%b"
     )
 )
 
@@ -186,7 +163,7 @@ set "PROMPT=[%~2] %PROMPT%"
 set _MY_ENV_ACTIVATED=1
 set _MY_CURRENT_ENV=%~2
 
-echo Environment "%~2" activated successfully.
+echo [92mEnvironment "%~2" activated successfully.[0m
 
 @REM Clear temporary variables
 set "_VAR_INI="
@@ -198,25 +175,25 @@ goto :EOF
 
 :DEACTIVATE_ENV
 if not defined _MY_ENV_ACTIVATED (
-    echo Error: No environment is activated.
+    echo [31mError: No environment is activated.[0m
     goto :EOF
 )
 
 @REM Check if WT_SESSION is defined
 if not defined WT_SESSION (
-    echo Error: WT_SESSION environment variable is not defined.
-    echo Cannot restore environment history.
+    echo [31mError: WT_SESSION environment variable is not defined.[0m
+    echo [33mCannot restore environment history.[0m
     goto :EOF
 )
 
 @REM Restore environment from WT_SESSION.bat file
 set "_ENV_HISTORY_FILE=%~dp0%WT_SESSION%.bat"
 if exist "%_ENV_HISTORY_FILE%" (
-    echo Restoring environment from: %WT_SESSION%.bat
+    echo [90mRestoring environment from:[0m [90;4m%WT_SESSION%.bat[0m
     call "%_ENV_HISTORY_FILE%"
     del "%_ENV_HISTORY_FILE%"
 ) else (
-    echo mWarning: Environment history file not found: %_ENV_HISTORY_FILE%
+    echo [33mWarning: Environment history file not found:[0m [90;4m%_ENV_HISTORY_FILE%[0m
 )
 
 @REM Restore original PROMPT
@@ -243,7 +220,7 @@ set "_MY_ENV_CLEAN_FILE="
 set "_ENV_HISTORY_FILE="
 set "_MY_OLD_PROMPT="
 
-echo Environment deactivated successfully.
+echo [92mEnvironment deactivated successfully.[0m
 goto :EOF
 
 :CHECK_VAR_EXISTS
@@ -251,30 +228,32 @@ goto :EOF
 @REM Parameters: %1 = variable name, %2 = environment history file
 set "_TEMP_FILE=%~dp0_check.tmp"
 > "%_TEMP_FILE%" type "%~2"
-findstr /C:"set \"%~1=" "%_TEMP_FILE%" >nul 2>nul
+cmd /c "findstr /C:\"set \\\"%~1=\" \"%_TEMP_FILE%\" >nul 2>nul"
 if errorlevel 1 (
     if exist "%_TEMP_FILE%" del "%_TEMP_FILE%"
+    set "_TEMP_FILE="
     exit /b 1
 ) else (
     if exist "%_TEMP_FILE%" del "%_TEMP_FILE%"
+    set "_TEMP_FILE="
     exit /b 0
 )
 
 :SHOW_ERROR
-echo Error: Unknown command "%~1".
+echo [31mError: Unknown command "[0m[5m%~1[0m[31m".[0m
 :SHOW_HELP
-echo Usage:
-echo   my list                    - List available environments
-echo   my a [env_name]            - Activate environment
-echo   my add [env_name]          
-echo   my activate [env_name]     
-echo   my md                      - Deactivate current environment
-echo   my mdel                    
-echo   my mdeactivate             
-echo   my help                    - Show this help message
-echo Params:
-echo   -f                         - Force deactivation even if no environment is activated
-echo   --force                    
+echo [90mUsage:[0m
+echo   my [96mlist[0m                    [90m- List available environments[0m
+echo   my [92ma[0m [env_name]            [90m- Activate environment[0m
+echo   my [92madd[0m [env_name]          
+echo   my [92mactivate[0m [env_name]     
+echo   my [93md[0m                       [90m- Deactivate current environment[0m
+echo   my [93mdel[0m                    
+echo   my [93mdeactivate[0m             
+echo   my [96mhelp[0m                    [90m- Show this help message[0m
+echo [90mParams:[0m
+echo    [90m-[0m[95mf[0m                        [90m- Add the path if it does not exist[0m
+echo   [90m--[0m[95mforce[0m                    
 goto :EOF
 
 :EOF
