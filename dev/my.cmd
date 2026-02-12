@@ -27,6 +27,7 @@ if "%~1" equ "activate" goto ACTIVATE_ENV
 if "%~1" equ "d" goto DEACTIVATE_ENV
 if "%~1" equ "del" goto DEACTIVATE_ENV
 if "%~1" equ "deactivate" goto DEACTIVATE_ENV
+if "%~1" equ "c" goto CACHE_MANAGEMENT
 if "%~1" equ "cache" goto CACHE_MANAGEMENT
 if "%~1" equ "help" goto SHOW_HELP
 goto SHOW_ERROR
@@ -242,7 +243,7 @@ if errorlevel 1 (
 
 :CACHE_MANAGEMENT
 if "%~2"=="" (
-    echo [31mError: Usage: my cache [list|clear][0m
+    echo [31mError: Usage: my cache list,clear[0m
     goto :EOF
 )
 
