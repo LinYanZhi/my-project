@@ -27,6 +27,7 @@ if "%~1" equ "activate" goto ACTIVATE_ENV
 if "%~1" equ "d" goto DEACTIVATE_ENV
 if "%~1" equ "del" goto DEACTIVATE_ENV
 if "%~1" equ "deactivate" goto DEACTIVATE_ENV
+if "%~1" equ "clear" goto CLEAR_CACHE
 if "%~1" equ "help" goto SHOW_HELP
 goto SHOW_ERROR
 
@@ -75,7 +76,7 @@ if not defined WT_SESSION (
 set "_MY_OLD_PROMPT=%PROMPT%"
 
 @REM Save current environment to WT_SESSION.bat file
-set "_ENV_HISTORY_FILE=%~dp0%WT_SESSION%.bat"
+set "_ENV_HISTORY_FILE=%~dp0cache\%WT_SESSION%.bat"
 echo @echo off > "%_ENV_HISTORY_FILE%"
 if errorlevel 1 (
     echo [31mError: Failed to create environment history file: [0m[90;4m%_ENV_HISTORY_FILE%[0m
@@ -137,7 +138,7 @@ if exist "%_PATH_INI%" (
 
 @REM Load variable.ini using read.exe
 set "_VAR_INI=%~dp0envs\%~2\variable.ini"
-set "_MY_ENV_CLEAN_FILE=%~dp0%WT_SESSION%_clean.bat"
+set "_MY_ENV_CLEAN_FILE=%~dp0cache\%WT_SESSION%_clean.bat"
 if exist "%_VAR_INI%" (
     @REM Use read.exe to filter comments and empty lines, then process key=value pairs
     for /f "tokens=1,2 delims==" %%a in ('read "%_VAR_INI%" -c "#" --skip-comments --skip-empty') do (
@@ -187,7 +188,7 @@ if not defined WT_SESSION (
 )
 
 @REM Restore environment from WT_SESSION.bat file
-set "_ENV_HISTORY_FILE=%~dp0%WT_SESSION%.bat"
+set "_ENV_HISTORY_FILE=%~dp0cache\%WT_SESSION%.bat"
 if exist "%_ENV_HISTORY_FILE%" (
     echo [90mRestoring environment from:[0m [90;4m%WT_SESSION%.bat[0m
     call "%_ENV_HISTORY_FILE%"
@@ -203,7 +204,7 @@ if defined _MY_OLD_PROMPT (
 )
 
 @REM Clear environment variables that were set from variable.ini
-set "_MY_ENV_CLEAN_FILE=%~dp0%WT_SESSION%_clean.bat"
+set "_MY_ENV_CLEAN_FILE=%~dp0cache\%WT_SESSION%_clean.bat"
 if exist "%_MY_ENV_CLEAN_FILE%" (
     @REM Execute cleanup batch file
     call "%_MY_ENV_CLEAN_FILE%"
@@ -239,6 +240,53 @@ if errorlevel 1 (
     exit /b 0
 )
 
+:CLEAR_CACHE
+echo [90mCache files in cache directory:[0m
+set "_CACHE_DIR=%~dp0cache"
+if not exist "%_CACHE_DIR%" (
+    echo   [33mNo cache directory found.[0m
+    set "_CACHE_DIR="
+    goto :EOF
+)
+
+@REM List all cache files
+dir /b "%_CACHE_DIR%\*.bat" >nul 2>nul
+if errorlevel 1 (
+    echo   [33mNo cache files found.[0m
+    set "_CACHE_DIR="
+    goto :EOF
+)
+
+echo.
+for /f "delims=" %%f in ('dir /b "%_CACHE_DIR%\*.bat"') do (
+    echo   [90m[4m%%f[0m
+)
+
+echo.
+echo [33mWarning: This will delete all cache files.[0m
+set /p "_CONFIRM=Are you sure you want to delete all cache files? (y/N): "
+if /i not "%_CONFIRM%"=="y" (
+    echo [90mOperation cancelled.[0m
+    set "_CACHE_DIR="
+    set "_CONFIRM="
+    goto :EOF
+)
+
+@REM Delete all cache files
+for /f "delims=" %%f in ('dir /b "%_CACHE_DIR%\*.bat"') do (
+    del "%_CACHE_DIR%\%%f" >nul 2>nul
+    if errorlevel 1 (
+        echo [31mFailed to delete: [0m[90m%%f[0m
+    ) else (
+        echo [92mDeleted: [0m[90m%%f[0m
+    )
+)
+
+echo [92mAll cache files have been cleared.[0m
+set "_CACHE_DIR="
+set "_CONFIRM="
+goto :EOF
+
 :SHOW_ERROR
 echo [31mError: Unknown command "[0m[5m%~1[0m[31m".[0m
 :SHOW_HELP
@@ -250,6 +298,7 @@ echo   my [92mactivate[0m [env_name]
 echo   my [93md[0m                       [90m- Deactivate current environment[0m
 echo   my [93mdel[0m                    
 echo   my [93mdeactivate[0m             
+echo   my [96mclear[0m                   [90m- Clear all cache files[0m
 echo   my [96mhelp[0m                    [90m- Show this help message[0m
 echo [90mParams:[0m
 echo    -[0m[95mf[0m                        [90m- Add the path if it does not exist[0m
