@@ -13,7 +13,7 @@ goto SKIP_ACTIVATION_CHECK
 
 :CHECK_ACTIVATED
 if defined _MY_ENV_ACTIVATED (
-    echo [31mError: Environment is already activated. Use [0m[94m"my d"[0m[31m to deactivate first.[0m
+    echo [31mError: Env already active. Use [0m[94m"my d"[0m[31m to deactivate first.[0m
     goto :EOF
 )
 
@@ -33,7 +33,7 @@ if "%~1" equ "help" goto SHOW_HELP
 goto SHOW_ERROR
 
 :LIST_ENVS
-echo [90mAvailable environments:[0m
+echo [90mAvailable envs:[0m
 if exist "%~dp0envs" (
     for /d %%i in ("%~dp0envs\*") do (
         if "%_MY_CURRENT_ENV%"=="%%~nxi" (
@@ -52,11 +52,11 @@ if "%~2"=="" (
     echo [31mError: Usage: my a env_name[0m
     goto :EOF
 )
-echo [90mActivating environment:[0m `%~2`
+echo [90mActivating env:[0m `%~2`
 
 @REM Check if environment exists
 if not exist "%~dp0envs\%~2" (
-    echo [31mError: Environment [0m[94m"%~2"[0m[31m does not exist.[0m
+    echo [31mError: Env [0m[94m"%~2"[0m[31m not found.[0m
     goto :EOF
 )
 
@@ -68,8 +68,8 @@ if "%~3" equ "-f" set "_MY_FORCE=1"
 @REM Check if WT_SESSION is defined
 if not defined WT_SESSION (
     @REM Only variable values WT_SESSION are allowed to be used as file names
-    echo [31mError: WT_SESSION environment variable is not defined.[0m
-    echo [33mThis script requires WT_SESSION to save/restore environment.[0m
+    echo [31mError: WT_SESSION env var not defined.[0m
+    echo [33mScript requires WT_SESSION to save/restore env.[0m
     goto :EOF
 )
 
@@ -80,7 +80,7 @@ set "_MY_OLD_PROMPT=%PROMPT%"
 set "_ENV_HISTORY_FILE=%~dp0cache\%WT_SESSION%.bat"
 echo @echo off > "%_ENV_HISTORY_FILE%"
 if errorlevel 1 (
-    echo [31mError: Failed to create environment history file: [0m[90;4m%_ENV_HISTORY_FILE%[0m
+    echo [31mError: Failed to create env history file: [0m[90;4m%_ENV_HISTORY_FILE%[0m
     @REM Clear temporary variables
     set "_ENV_HISTORY_FILE="
     set "_MY_OLD_PROMPT="
@@ -109,31 +109,32 @@ if exist "%_VAR_INI%" (
 )
 set "_VAR_INI="
 
-echo [90mEnvironment history saved to: [0m[90;4m%WT_SESSION%.bat[0m
+echo Save Envs: [90;4m%WT_SESSION%.bat[0m
 
 @REM Load path.ini using read.exe (much simpler and more powerful)
 set "_PATH_INI=%~dp0envs\%~2\path.ini"
 if exist "%_PATH_INI%" (
-    @REM Use read.exe to filter comments and empty lines
-    for /f "delims=" %%a in ('read "%_PATH_INI%" -c "#" --skip-comments --skip-empty') do (
+    @REM Use read.exe to filter comments and empty lines with reverse output
+    @REM Reverse output ensures paths are added in config file order to PATH beginning
+    for /f "delims=" %%a in ('read "%_PATH_INI%" -c "#" --skip-comments --skip-empty --reverse') do (
         @REM Check if path exists (unless force is enabled)
         if "%_MY_FORCE%"=="0" (
             if not exist "%%a" (
-                        echo   [33mSkip path: [0m[90;4m%%a[0m
+                echo [33mSkip path: [0m[90;4m%%a[0m
             ) else (
-                @REM Add path to the beginning of PATH
-                echo Adding path: [90;4m%%a[0m
+                @REM Add path to the beginning of PATH (reverse order ensures config file order)
+                echo  Add path: [90;4m%%a[0m
                 call set "PATH=%%a;%%PATH%%"
             )
         ) else (
             @REM Force mode - add path regardless of existence
-            echo Adding path: [90;4m%%a[0m
+            echo  Add path: [90;4m%%a[0m
             call set "PATH=%%a;%%PATH%%"
         )
     )
 
     echo on
-    echo [92mPATH updated successfully[0m
+    echo [92mPATH updated success[0m
     echo off
 )
 
@@ -165,7 +166,7 @@ set "PROMPT=[%~2] %PROMPT%"
 set _MY_ENV_ACTIVATED=1
 set _MY_CURRENT_ENV=%~2
 
-echo [92mEnvironment "%~2" activated successfully.[0m
+echo [92mActivate "%~2" success.[0m
 
 @REM Clear temporary variables
 set "_VAR_INI="
@@ -177,25 +178,25 @@ goto :EOF
 
 :DEACTIVATE_ENV
 if not defined _MY_ENV_ACTIVATED (
-    echo [31mError: No environment is activated.[0m
+    echo [31mError: No env active.[0m
     goto :EOF
 )
 
 @REM Check if WT_SESSION is defined
 if not defined WT_SESSION (
-    echo [31mError: WT_SESSION environment variable is not defined.[0m
-    echo [33mCannot restore environment history.[0m
+    echo [31mError: WT_SESSION env var not defined.[0m
+    echo [33mCannot restore env history.[0m
     goto :EOF
 )
 
 @REM Restore environment from WT_SESSION.bat file
 set "_ENV_HISTORY_FILE=%~dp0cache\%WT_SESSION%.bat"
 if exist "%_ENV_HISTORY_FILE%" (
-    echo [90mRestoring environment from:[0m [90;4m%WT_SESSION%.bat[0m
+    echo [90mRestoring env from:[0m [90;4m%WT_SESSION%.bat[0m
     call "%_ENV_HISTORY_FILE%"
     del "%_ENV_HISTORY_FILE%"
 ) else (
-    echo [33mWarning: Environment history file not found:[0m [90;4m%_ENV_HISTORY_FILE%[0m
+    echo [33mWarning: Env history file not found:[0m [90;4m%_ENV_HISTORY_FILE%[0m
 )
 
 @REM Restore original PROMPT
@@ -222,7 +223,7 @@ set "_MY_ENV_CLEAN_FILE="
 set "_ENV_HISTORY_FILE="
 set "_MY_OLD_PROMPT="
 
-echo [92mEnvironment deactivated successfully.[0m
+echo [92mEnv deactivated success.[0m
 goto :EOF
 
 :CHECK_VAR_EXISTS
@@ -254,7 +255,7 @@ echo [31mError: Unknown cache command "[0m[5m%~2[0m[31m". Use "list" or "cl
 goto :EOF
 
 :CACHE_LIST
-echo [90mCache files in cache directory:[0m
+echo [90mCache files:[0m
 set "_CACHE_DIR=%~dp0cache"
 if not exist "%_CACHE_DIR%" (
     echo   [33mNo cache directory found.[0m
@@ -278,7 +279,7 @@ set "_CACHE_DIR="
 goto :EOF
 
 :CACHE_CLEAR
-echo [90mCache files in cache directory:[0m
+echo [90mCache files:[0m
 set "_CACHE_DIR=%~dp0cache"
 if not exist "%_CACHE_DIR%" (
     echo   [33mNo cache directory found.[0m
@@ -300,8 +301,8 @@ for /f "delims=" %%f in ('dir /b "%_CACHE_DIR%\*.bat"') do (
 )
 
 echo.
-echo [33mWarning: This will delete all cache files.[0m
-set /p "_CONFIRM=Are you sure you want to delete all cache files? (y/N): "
+echo [33mWarning: Delete all cache files.[0m
+set /p "_CONFIRM=Delete all cache files? (y/N): "
 if /i not "%_CONFIRM%"=="y" (
     echo [90mOperation cancelled.[0m
     set "_CACHE_DIR="
@@ -319,7 +320,7 @@ for /f "delims=" %%f in ('dir /b "%_CACHE_DIR%\*.bat"') do (
     )
 )
 
-echo [92mAll cache files have been cleared.[0m
+echo [92mCache cleared.[0m
 set "_CACHE_DIR="
 set "_CONFIRM="
 goto :EOF
@@ -328,16 +329,16 @@ goto :EOF
 echo [31mError: Unknown command "[0m[5m%~1[0m[31m".[0m
 :SHOW_HELP
 echo [90mUsage:[0m
-echo   my [96mlist[0m                    [90m- List available environments[0m
-echo   my [92ma[0m [env_name]            [90m- Activate environment[0m
+echo   my [96mlist[0m                    [90m- List envs[0m
+echo   my [92ma[0m [env_name]            [90m- Activate env[0m
 echo   my [92madd[0m [env_name]          
 echo   my [92mactivate[0m [env_name]     
-echo   my [93md[0m                       [90m- Deactivate current environment[0m
+echo   my [93md[0m                       [90m- Deactivate env[0m
 echo   my [93mdel[0m                    
 echo   my [93mdeactivate[0m             
-echo   my [96mc[0m list                  [90m- List all cache files[0m
+echo   my [96mc[0m list                  [90m- List cache[0m
 echo   my [96mcache[0m list              
-echo   my [96mc[0m clear                 [90m- Clear all cache files[0m
+echo   my [96mc[0m clear                 [90m- Clear cache[0m
 echo   my [96mcache[0m clear             
 echo   my [96mhelp[0m                    [90m- Show this help message[0m
 echo [90mParams:[0m
