@@ -5,6 +5,11 @@
 @REM 1. Define as few variables as possible;
 @REM 2. The defined variables begin with an underscore _;
 
+@REM Generate WT_SESSION if not defined
+if not defined WT_SESSION (
+    for /f "delims=" %%g in ('powershell -Command "[System.Guid]::NewGuid().ToString()"') do set WT_SESSION=%%g
+)
+
 @REM Check if already activated (only for add commands)
 if "%~1" equ "a" goto CHECK_ACTIVATED
 if "%~1" equ "add" goto CHECK_ACTIVATED
@@ -65,13 +70,7 @@ set "_MY_FORCE=0"
 if "%~3" equ "--force" set "_MY_FORCE=1"
 if "%~3" equ "-f" set "_MY_FORCE=1"
 
-@REM Check if WT_SESSION is defined
-if not defined WT_SESSION (
-    @REM Only variable values WT_SESSION are allowed to be used as file names
-    echo [31mError: WT_SESSION env var not defined.[0m
-    echo [33mScript requires WT_SESSION to save/restore env.[0m
-    goto :EOF
-)
+@REM WT_SESSION is now automatically generated if not defined
 
 @REM Save original PROMPT before modifying it
 set "_MY_OLD_PROMPT=%PROMPT%"
@@ -182,12 +181,7 @@ if not defined _MY_ENV_ACTIVATED (
     goto :EOF
 )
 
-@REM Check if WT_SESSION is defined
-if not defined WT_SESSION (
-    echo [31mError: WT_SESSION env var not defined.[0m
-    echo [33mCannot restore env history.[0m
-    goto :EOF
-)
+@REM WT_SESSION is now automatically generated if not defined
 
 @REM Restore environment from WT_SESSION.bat file
 set "_ENV_HISTORY_FILE=%~dp0cache\%WT_SESSION%.bat"
