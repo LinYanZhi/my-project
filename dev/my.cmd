@@ -27,7 +27,7 @@ if "%~1" equ "activate" goto ACTIVATE_ENV
 if "%~1" equ "d" goto DEACTIVATE_ENV
 if "%~1" equ "del" goto DEACTIVATE_ENV
 if "%~1" equ "deactivate" goto DEACTIVATE_ENV
-if "%~1" equ "clear" goto CLEAR_CACHE
+if "%~1" equ "cache" goto CACHE_MANAGEMENT
 if "%~1" equ "help" goto SHOW_HELP
 goto SHOW_ERROR
 
@@ -240,7 +240,43 @@ if errorlevel 1 (
     exit /b 0
 )
 
-:CLEAR_CACHE
+:CACHE_MANAGEMENT
+if "%~2"=="" (
+    echo [31mError: Usage: my cache [list|clear][0m
+    goto :EOF
+)
+
+if "%~2" equ "list" goto CACHE_LIST
+if "%~2" equ "clear" goto CACHE_CLEAR
+
+echo [31mError: Unknown cache command "[0m[5m%~2[0m[31m". Use "list" or "clear".[0m
+goto :EOF
+
+:CACHE_LIST
+echo [90mCache files in cache directory:[0m
+set "_CACHE_DIR=%~dp0cache"
+if not exist "%_CACHE_DIR%" (
+    echo   [33mNo cache directory found.[0m
+    set "_CACHE_DIR="
+    goto :EOF
+)
+
+@REM List all cache files
+dir /b "%_CACHE_DIR%\*.bat" >nul 2>nul
+if errorlevel 1 (
+    echo   [33mNo cache files found.[0m
+    set "_CACHE_DIR="
+    goto :EOF
+)
+
+echo.
+for /f "delims=" %%f in ('dir /b "%_CACHE_DIR%\*.bat"') do (
+    echo   [90m[4m%%f[0m
+)
+set "_CACHE_DIR="
+goto :EOF
+
+:CACHE_CLEAR
 echo [90mCache files in cache directory:[0m
 set "_CACHE_DIR=%~dp0cache"
 if not exist "%_CACHE_DIR%" (
@@ -298,7 +334,8 @@ echo   my [92mactivate[0m [env_name]
 echo   my [93md[0m                       [90m- Deactivate current environment[0m
 echo   my [93mdel[0m                    
 echo   my [93mdeactivate[0m             
-echo   my [96mclear[0m                   [90m- Clear all cache files[0m
+echo   my [96mcache[0m list              [90m- List all cache files[0m
+echo   my [96mcache[0m clear             [90m- Clear all cache files[0m
 echo   my [96mhelp[0m                    [90m- Show this help message[0m
 echo [90mParams:[0m
 echo    -[0m[95mf[0m                        [90m- Add the path if it does not exist[0m
