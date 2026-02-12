@@ -252,8 +252,8 @@ echo   my [93mdel[0m
 echo   my [93mdeactivate[0m             
 echo   my [96mhelp[0m                    [90m- Show this help message[0m
 echo [90mParams:[0m
-echo    [90m-[0m[95mf[0m                        [90m- Add the path if it does not exist[0m
-echo   [90m--[0m[95mforce[0m                    
+echo    -[0m[95mf[0m                        [90m- Add the path if it does not exist[0m
+echo   --[0m[95mforce[0m                    
 goto :EOF
 
 :EOF
