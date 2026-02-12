@@ -335,8 +335,10 @@ echo   my [92mactivate[0m [env_name]
 echo   my [93md[0m                       [90m- Deactivate current environment[0m
 echo   my [93mdel[0m                    
 echo   my [93mdeactivate[0m             
-echo   my [96mcache[0m list              [90m- List all cache files[0m
-echo   my [96mcache[0m clear             [90m- Clear all cache files[0m
+echo   my [96mc[0m list                  [90m- List all cache files[0m
+echo   my [96mcache[0m list              
+echo   my [96mc[0m clear                 [90m- Clear all cache files[0m
+echo   my [96mcache[0m clear             
 echo   my [96mhelp[0m                    [90m- Show this help message[0m
 echo [90mParams:[0m
 echo    -[0m[95mf[0m                        [90m- Add the path if it does not exist[0m
