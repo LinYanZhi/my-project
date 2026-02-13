@@ -25,6 +25,7 @@ if defined _MY_ENV_ACTIVATED (
 :SKIP_ACTIVATION_CHECK
 
 @REM my list - List environments
+if "%~1" equ "l" goto LIST_ENVS
 if "%~1" equ "list" goto LIST_ENVS
 if "%~1" equ "a" goto ACTIVATE_ENV
 if "%~1" equ "add" goto ACTIVATE_ENV
@@ -34,6 +35,7 @@ if "%~1" equ "del" goto DEACTIVATE_ENV
 if "%~1" equ "deactivate" goto DEACTIVATE_ENV
 if "%~1" equ "c" goto CACHE_MANAGEMENT
 if "%~1" equ "cache" goto CACHE_MANAGEMENT
+if "%~1" equ "h" goto SHOW_HELP
 if "%~1" equ "help" goto SHOW_HELP
 goto SHOW_ERROR
 
@@ -242,7 +244,9 @@ if "%~2"=="" (
     goto :EOF
 )
 
+if "%~2" equ "l" goto CACHE_LIST
 if "%~2" equ "list" goto CACHE_LIST
+if "%~2" equ "c" goto CACHE_CLEAR
 if "%~2" equ "clear" goto CACHE_CLEAR
 
 echo [31mError: Unknown cache command "[0m[5m%~2[0m[31m". Use "list" or "clear".[0m
