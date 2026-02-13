@@ -78,37 +78,32 @@ if "%~3" equ "-f" set "_MY_FORCE=1"
 set "_MY_OLD_PROMPT=%PROMPT%"
 
 @REM Save current environment to WT_SESSION.bat file
-set "_ENV_HISTORY_FILE=%~dp0cache\%WT_SESSION%.bat"
-echo @echo off > "%_ENV_HISTORY_FILE%"
+echo @echo off > "%~dp0cache\%WT_SESSION%.bat"
 if errorlevel 1 (
-    echo [31mError: Failed to create env history file: [0m[90;4m%_ENV_HISTORY_FILE%[0m
+    echo [31mError: Failed to create env history file: [0m[90;4m%WT_SESSION%.bat[0m
     @REM Clear temporary variables
-    set "_ENV_HISTORY_FILE="
     set "_MY_OLD_PROMPT="
     goto :EOF
 )
 
-@REM Export all environment variables
-for /f "delims==" %%a in ('set') do (
-    for /f "delims=" %%b in ('cmd /c "echo %%%%a%%"') do (
-        echo set "%%a=%%b" >> "%_ENV_HISTORY_FILE%"
+@REM First: Add empty settings for variables from variable.ini (cleanup phase)
+@REM This ensures that environment variables are properly cleared before restoration
+if exist "%~dp0envs\%~2\variable.ini" (
+    for /f "tokens=1,2 delims==" %%a in ('read "%~dp0envs\%~2\variable.ini" -c "#" --skip-comments --skip-empty') do (
+        @REM Add empty setting at the beginning (cleanup phase)
+        @REM Use uppercase to ensure consistency with Windows environment variables
+        for %%c in (%%a) do echo set "%%c=" >> "%~dp0cache\%WT_SESSION%.bat"
     )
 )
 
-@REM Also include variables from variable.ini in environment history
-set "_VAR_INI=%~dp0envs\%~2\variable.ini"
-if exist "%_VAR_INI%" (
-    @REM Use read.exe to filter comments and empty lines, then process key=value pairs
-    for /f "tokens=1,2 delims==" %%a in ('read "%_VAR_INI%" -c "#" --skip-comments --skip-empty') do (
-        @REM Check if variable already exists in environment history
-        call :CHECK_VAR_EXISTS "%%a" "%_ENV_HISTORY_FILE%"
-        if errorlevel 1 (
-            @REM Variable doesn't exist in current environment, add it as empty
-            echo set "%%a=" >> "%_ENV_HISTORY_FILE%"
-        )
+@REM Second: Export all environment variables (restoration phase)
+@REM Use consistent uppercase for environment variable names
+for /f "delims==" %%a in ('set') do (
+    for /f "delims=" %%b in ('cmd /c "echo %%%%a%%"') do (
+        @REM Convert variable name to uppercase for consistency
+        for %%c in (%%a) do echo set "%%c=%%b" >> "%~dp0cache\%WT_SESSION%.bat"
     )
 )
-set "_VAR_INI="
 
 echo Save Envs: [90;4m%WT_SESSION%.bat[0m
 
@@ -135,22 +130,13 @@ if exist "%_PATH_INI%" (
     )
 )
 
+@REM Get current environment variables BEFORE setting new ones
+> "%~dp0_temp_env.txt" set
+
 @REM Load variable.ini using read.exe
-set "_VAR_INI=%~dp0envs\%~2\variable.ini"
-set "_MY_ENV_CLEAN_FILE=%~dp0cache\%WT_SESSION%_clean.bat"
-if exist "%_VAR_INI%" (
+if exist "%~dp0envs\%~2\variable.ini" (
     @REM Use read.exe to filter comments and empty lines, then process key=value pairs
-    for /f "tokens=1,2 delims==" %%a in ('read "%_VAR_INI%" -c "#" --skip-comments --skip-empty') do (
-        @REM Save original value (empty if not defined)
-        set "_TEMP_VAR=%%%%a%%"
-        for /f "delims=" %%v in ('cmd /c "echo.%_TEMP_VAR%"') do (
-            if "%%v"=="" (
-                echo set "%%a=" >> "%_MY_ENV_CLEAN_FILE%"
-            ) else (
-                echo set "%%a=%%v" >> "%_MY_ENV_CLEAN_FILE%"
-            )
-        )
-        set "_TEMP_VAR="
+    for /f "tokens=1,2 delims==" %%a in ('read "%~dp0envs\%~2\variable.ini" -c "#" --skip-comments --skip-empty') do (
         @REM Set the new value
         set "%%a=%%b"
     )
@@ -163,13 +149,16 @@ set "PROMPT=[%~2] %PROMPT%"
 set _MY_ENV_ACTIVATED=1
 set _MY_CURRENT_ENV=%~2
 
+@REM Display environment variables
+call :SHOW_ENV_VARIABLES "%~2" "%~dp0_temp_env.txt"
+
 echo [90m Activate: [0m`%~2` [92msuccess.[0m
 
+@REM Cleanup temporary file
+if exist "%~dp0_temp_env.txt" del "%~dp0_temp_env.txt"
+
 @REM Clear temporary variables
-set "_VAR_INI="
-set "_MY_ENV_CLEAN_FILE="
 set "_PATH_INI="
-set "_ENV_HISTORY_FILE="
 set "_MY_FORCE="
 goto :EOF
 
@@ -182,13 +171,12 @@ if not defined _MY_ENV_ACTIVATED (
 @REM WT_SESSION is now automatically generated if not defined
 
 @REM Restore environment from WT_SESSION.bat file
-set "_ENV_HISTORY_FILE=%~dp0cache\%WT_SESSION%.bat"
-if exist "%_ENV_HISTORY_FILE%" (
+if exist "%~dp0cache\%WT_SESSION%.bat" (
     echo Reloading: [90;4m%WT_SESSION%.bat[0m
-    call "%_ENV_HISTORY_FILE%"
-    del "%_ENV_HISTORY_FILE%"
+    call "%~dp0cache\%WT_SESSION%.bat"
+    del "%~dp0cache\%WT_SESSION%.bat"
 ) else (
-    echo [33mWarning: Env history file not found:[0m [90;4m%_ENV_HISTORY_FILE%[0m
+    echo [33mWarning: Env history file not found:[0m [90;4m%WT_SESSION%.bat[0m
 )
 
 @REM Restore original PROMPT
@@ -197,24 +185,8 @@ if defined _MY_OLD_PROMPT (
     set "_MY_OLD_PROMPT="
 )
 
-@REM Clear environment variables that were set from variable.ini
-set "_MY_ENV_CLEAN_FILE=%~dp0cache\%WT_SESSION%_clean.bat"
-if exist "%_MY_ENV_CLEAN_FILE%" (
-    @REM Execute cleanup batch file
-    call "%_MY_ENV_CLEAN_FILE%"
-    @REM Delete cleanup file
-    del "%_MY_ENV_CLEAN_FILE%"
-)
-
 @REM Clear activation flags
 set "_MY_ENV_ACTIVATED="
-@REM set "_MY_CURRENT_ENV="
-
-@REM Clear temporary variables
-set "_MY_ENV_CLEAN_FILE="
-set "_ENV_HISTORY_FILE="
-set "_MY_OLD_PROMPT="
-set "_MY_FORCE="
 
 echo [90mDeactivat: [0m`%_MY_CURRENT_ENV%` [92msuccess.[0m
 set "_MY_CURRENT_ENV="
@@ -223,16 +195,17 @@ goto :EOF
 :CHECK_VAR_EXISTS
 @REM Subroutine to check if variable exists in environment history file
 @REM Parameters: %1 = variable name, %2 = environment history file
+setlocal
 set "_TEMP_FILE=%~dp0_check.tmp"
 > "%_TEMP_FILE%" type "%~2"
 cmd /c "findstr /C:\"set \\\"%~1=\" \"%_TEMP_FILE%\" >nul 2>nul"
 if errorlevel 1 (
     if exist "%_TEMP_FILE%" del "%_TEMP_FILE%"
-    set "_TEMP_FILE="
+    endlocal
     exit /b 1
 ) else (
     if exist "%_TEMP_FILE%" del "%_TEMP_FILE%"
-    set "_TEMP_FILE="
+    endlocal
     exit /b 0
 )
 
@@ -333,6 +306,75 @@ echo     my [36mcache[0m clear       [90m- [c c]             [0m
 echo     my [0m help[0m             [90m- [h/help]          [0m
 echo [90mParams:[0m
 echo     --[0m[95mforce[0m              [90m- [-f/--force][0m
+goto :EOF
+
+:SHOW_ENV_VARIABLES
+@REM Display environment variables with color coding
+@REM Parameters: %1 = environment name, %2 = temporary environment file
+setlocal enabledelayedexpansion
+
+@REM Get environment variables from variable.ini
+if not exist "%~dp0envs\%~1\variable.ini" (
+    endlocal
+    goto :EOF
+)
+
+@REM Read variable.ini and process each variable
+set "_NEW_VARS=0"
+set "_EXISTING_VARS=0"
+
+@REM Calculate maximum variable name length for alignment
+set "_MAX_NAME_LEN=0"
+for /f "tokens=1,2 delims==" %%a in ('read "%~dp0envs\%~1\variable.ini" -c "#" --skip-comments --skip-empty') do (
+    set "_NAME_LEN=%%a"
+    call :GET_STRING_LENGTH "!_NAME_LEN!"
+    if !_LENGTH! gtr !_MAX_NAME_LEN! set "_MAX_NAME_LEN=!_LENGTH!"
+)
+
+@REM Display environment variables
+
+@REM Use read.exe to process variable.ini file
+for /f "tokens=1,2 delims==" %%a in ('read "%~dp0envs\%~1\variable.ini" -c "#" --skip-comments --skip-empty') do (
+    @REM Check if variable already exists in current environment
+    set "_VAR_EXISTS=0"
+    for /f "usebackq tokens=1 delims==" %%x in ("%~2") do (
+        if /i "%%x"=="%%a" set "_VAR_EXISTS=1"
+    )
+    
+    @REM Calculate padding for alignment
+    set "_NAME_LEN=%%a"
+    call :GET_STRING_LENGTH "!_NAME_LEN!"
+    set /a _PADDING=!_MAX_NAME_LEN! - !_LENGTH!
+    set "_SPACES="
+    for /l %%i in (1,1,!_PADDING!) do set "_SPACES=!_SPACES! "
+    
+    if !_VAR_EXISTS! equ 1 (
+        @REM Update existing variable - show in yellow
+        echo [33mRnew vari:[0m %%a!_SPACES! = %%b
+        set /a _EXISTING_VARS+=1
+    ) else (
+        @REM Add new variable - show in green
+        echo  [32mAdd vari:[0m %%a!_SPACES! = %%b
+        set /a _NEW_VARS+=1
+    )
+)
+
+endlocal
+goto :EOF
+
+:GET_STRING_LENGTH
+@REM Subroutine to get string length
+@REM Parameters: %1 = string to measure
+setlocal enabledelayedexpansion
+set "_STR=%~1"
+set "_LENGTH=0"
+:LOOP
+if not "!_STR!"=="" (
+    set "_STR=!_STR:~1!"
+    set /a _LENGTH+=1
+    goto LOOP
+)
+endlocal & set "_LENGTH=%_LENGTH%"
 goto :EOF
 
 :EOF
