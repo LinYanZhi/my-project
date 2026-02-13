@@ -59,11 +59,11 @@ if "%~2"=="" (
     echo [31mError: Usage: my a env_name[0m
     goto :EOF
 )
-echo [90mActivating env:[0m `%~2`
+echo  [90mActivate:[0m `%~2`
 
 @REM Check if environment exists
 if not exist "%~dp0envs\%~2" (
-    echo [31mError: Env [0m[94m"%~2"[0m[31m not found.[0m
+    echo [31mError: Env [0m[94m`%~2`[0m[31m not found.[0m
     goto :EOF
 )
 
@@ -163,7 +163,7 @@ set "PROMPT=[%~2] %PROMPT%"
 set _MY_ENV_ACTIVATED=1
 set _MY_CURRENT_ENV=%~2
 
-echo [90mActivate[0m `%~2` [92msuccess.[0m
+echo [90m Activate: [0m`%~2` [92msuccess.[0m
 
 @REM Clear temporary variables
 set "_VAR_INI="
@@ -184,7 +184,7 @@ if not defined _MY_ENV_ACTIVATED (
 @REM Restore environment from WT_SESSION.bat file
 set "_ENV_HISTORY_FILE=%~dp0cache\%WT_SESSION%.bat"
 if exist "%_ENV_HISTORY_FILE%" (
-    echo Recover env from: [90;4m%WT_SESSION%.bat[0m
+    echo Reloading: [90;4m%WT_SESSION%.bat[0m
     call "%_ENV_HISTORY_FILE%"
     del "%_ENV_HISTORY_FILE%"
 ) else (
@@ -208,14 +208,16 @@ if exist "%_MY_ENV_CLEAN_FILE%" (
 
 @REM Clear activation flags
 set "_MY_ENV_ACTIVATED="
-set "_MY_CURRENT_ENV="
+@REM set "_MY_CURRENT_ENV="
 
 @REM Clear temporary variables
 set "_MY_ENV_CLEAN_FILE="
 set "_ENV_HISTORY_FILE="
 set "_MY_OLD_PROMPT="
+set "_MY_FORCE="
 
-echo [92mDeactivate success.[0m
+echo [90mDeactivat: [0m`%_MY_CURRENT_ENV%` [92msuccess.[0m
+set "_MY_CURRENT_ENV="
 goto :EOF
 
 :CHECK_VAR_EXISTS
@@ -323,17 +325,14 @@ goto :EOF
 echo [31mError: Unknown command "[0m[5m%~1[0m[31m".[0m
 :SHOW_HELP
 echo [90mUsage:[0m
-echo   my [96mlist[0m                    [90m- List envs[0m
-echo   my [92madd[0m [env_name]          [90m- Activate env[0m
-echo   my [92mactivate[0m [env_name]     
-echo   my [93mdel[0m                     [90m- Deactivate env[0m
-echo   my [93mdeactivate[0m             
-echo   my [36mcache[0m list              [90m- List cache[0m
-echo   my [36mcache[0m clear             [90m- Clear cache[0m
-echo   my help                    [90m- Show this help message[0m
+echo     my [96m list[0m             [90m- [l/list]          [0m
+echo     my [92m  add[0m [env_name]  [90m- [a/add/activate]  [0m
+echo     my [93m  del[0m             [90m- [d/del/deactivate][0m
+echo     my [36mcache[0m list        [90m- [c l]             [0m
+echo     my [36mcache[0m clear       [90m- [c c]             [0m
+echo     my [0m help[0m             [90m- [h/help]          [0m
 echo [90mParams:[0m
-echo    -[0m[95mf[0m                        [90m- Add the path if it does not exist[0m
-echo   --[0m[95mforce[0m                    
+echo     --[0m[95mforce[0m              [90m- [-f/--force][0m
 goto :EOF
 
 :EOF
