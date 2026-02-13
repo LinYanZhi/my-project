@@ -124,19 +124,15 @@ if exist "%_PATH_INI%" (
                 echo [33mSkip path: [0m[90;4m%%a[0m
             ) else (
                 @REM Add path to the beginning of PATH (reverse order ensures config file order)
-                echo  Add path: [90;4m%%a[0m
+                echo  [32mAdd path: [0m[90;4m%%a[0m
                 call set "PATH=%%a;%%PATH%%"
             )
         ) else (
             @REM Force mode - add path regardless of existence
-            echo  Add path: [90;4m%%a[0m
+            echo  [32mAdd path: [0m[90;4m%%a[0m
             call set "PATH=%%a;%%PATH%%"
         )
     )
-
-    echo on
-    echo [92mPATH updated success[0m
-    echo off
 )
 
 @REM Load variable.ini using read.exe
@@ -167,7 +163,7 @@ set "PROMPT=[%~2] %PROMPT%"
 set _MY_ENV_ACTIVATED=1
 set _MY_CURRENT_ENV=%~2
 
-echo [92mActivate "%~2" success.[0m
+echo [90mActivate[0m `%~2` [92msuccess.[0m
 
 @REM Clear temporary variables
 set "_VAR_INI="
@@ -188,7 +184,7 @@ if not defined _MY_ENV_ACTIVATED (
 @REM Restore environment from WT_SESSION.bat file
 set "_ENV_HISTORY_FILE=%~dp0cache\%WT_SESSION%.bat"
 if exist "%_ENV_HISTORY_FILE%" (
-    echo [90mRestoring env from:[0m [90;4m%WT_SESSION%.bat[0m
+    echo Recover env from: [90;4m%WT_SESSION%.bat[0m
     call "%_ENV_HISTORY_FILE%"
     del "%_ENV_HISTORY_FILE%"
 ) else (
@@ -219,7 +215,7 @@ set "_MY_ENV_CLEAN_FILE="
 set "_ENV_HISTORY_FILE="
 set "_MY_OLD_PROMPT="
 
-echo [92mEnv deactivated success.[0m
+echo [92mDeactivate success.[0m
 goto :EOF
 
 :CHECK_VAR_EXISTS
