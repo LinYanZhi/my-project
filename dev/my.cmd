@@ -328,17 +328,13 @@ echo [31mError: Unknown command "[0m[5m%~1[0m[31m".[0m
 :SHOW_HELP
 echo [90mUsage:[0m
 echo   my [96mlist[0m                    [90m- List envs[0m
-echo   my [92ma[0m [env_name]            [90m- Activate env[0m
-echo   my [92madd[0m [env_name]          
+echo   my [92madd[0m [env_name]          [90m- Activate env[0m
 echo   my [92mactivate[0m [env_name]     
-echo   my [93md[0m                       [90m- Deactivate env[0m
-echo   my [93mdel[0m                    
+echo   my [93mdel[0m                     [90m- Deactivate env[0m
 echo   my [93mdeactivate[0m             
-echo   my [96mc[0m list                  [90m- List cache[0m
-echo   my [96mcache[0m list              
-echo   my [96mc[0m clear                 [90m- Clear cache[0m
-echo   my [96mcache[0m clear             
-echo   my [96mhelp[0m                    [90m- Show this help message[0m
+echo   my [36mcache[0m list              [90m- List cache[0m
+echo   my [36mcache[0m clear             [90m- Clear cache[0m
+echo   my help                    [90m- Show this help message[0m
 echo [90mParams:[0m
 echo    -[0m[95mf[0m                        [90m- Add the path if it does not exist[0m
 echo   --[0m[95mforce[0m                    
