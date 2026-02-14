@@ -1,4 +1,0 @@
-@echo off
-set "PATH=C:\Users\LinYanZhi\Code\uv-build\.venv/Scripts;c:\\Users\\LinYanZhi\\.trae-cn\\tools\\trae-gopls\\current;c:\\Users\\LinYanZhi\\.trae-cn\\sdks\\workspaces\\6e9a1355\\versions\\node\\current;c:\\Users\\LinYanZhi\\.trae-cn\\sdks\\versions\\node\\current;c:\Users\LinYanZhi\.trae-cn\tools\trae-gopls\current;c:\Users\LinYanZhi\.trae-cn\sdks\workspaces\6e9a1355\versions\node\current;c:\Users\LinYanZhi\.trae-cn\sdks\versions\node\current;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Users\LinYanZhi\Documents\Notepad_file\.cmd;;c:\Users\LinYanZhi\.trae-cn\extensions\ms-python.debugpy-2025.18.0-win32-x64\bundled\scripts\noConfigScripts"
-set "PROMPT=$P$G"
-set "WT_SESSION=4c508e1a-13ee-41c3-acf8-06d12eec2a43"
