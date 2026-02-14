@@ -18,7 +18,7 @@ goto SKIP_ACTIVATION_CHECK
 
 :CHECK_ACTIVATED
 if defined _MY_ENV_ACTIVATED (
-    echo [31mError: Env already active. Use [0m[94m"my d"[0m[31m to deactivate first.[0m
+    echo Error: Env already active. Use "my d" to deactivate first.
     goto :EOF
 )
 
@@ -40,11 +40,11 @@ if "%~1" equ "help" goto SHOW_HELP
 goto SHOW_ERROR
 
 :LIST_ENVS
-echo [90mAvailable envs:[0m
+echo Available envs:
 if exist "%~dp0envs" (
     for /d %%i in ("%~dp0envs\*") do (
         if "%_MY_CURRENT_ENV%"=="%%~nxi" (
-            echo   [92m* %%~nxi[0m
+            echo   * %%~nxi
         ) else (
             echo     %%~nxi
         )
@@ -56,14 +56,14 @@ goto :EOF
 
 :ACTIVATE_ENV
 if "%~2"=="" (
-    echo [31mError: Usage: my a env_name[0m
+    echo Error: Usage: my a env_name
     goto :EOF
 )
-echo  [90mActivate:[0m `%~2`
+echo Activate: %~2
 
 @REM Check if environment exists
 if not exist "%~dp0envs\%~2" (
-    echo [31mError: Env [0m[94m`%~2`[0m[31m not found.[0m
+    echo Error: Env %~2 not found.
     goto :EOF
 )
 
@@ -77,65 +77,60 @@ if "%~3" equ "-f" set "_MY_FORCE=1"
 @REM Save original PROMPT before modifying it
 set "_MY_OLD_PROMPT=%PROMPT%"
 
-@REM Save current environment to WT_SESSION.bat file
-echo @echo off > "%~dp0cache\%WT_SESSION%.bat"
-if errorlevel 1 (
-    echo [31mError: Failed to create env history file: [0m[90;4m%WT_SESSION%.bat[0m
-    @REM Clear temporary variables
-    set "_MY_OLD_PROMPT="
-    goto :EOF
-)
-
-@REM First: Add empty settings for variables from variable.ini (cleanup phase)
-@REM This ensures that environment variables are properly cleared before restoration
-if exist "%~dp0envs\%~2\variable.ini" (
-    for /f "tokens=1,2 delims==" %%a in ('type "%~dp0envs\%~2\variable.ini" ^| findstr /v "^# ^; ^$"') do (
-        @REM Add empty setting at the beginning (cleanup phase)
-        @REM Use uppercase to ensure consistency with Windows environment variables
-        for %%c in (%%a) do echo set "%%c=" >> "%~dp0cache\%WT_SESSION%.bat"
+@REM Save current environment to WT_SESSION.bat file - OPTIMIZED VERSION
+> "%~dp0cache\%WT_SESSION%.bat" echo @echo off
+set > "%~dp0_temp_set.txt"
+(
+    for /f "usebackq tokens=1,* delims==" %%a in ("%~dp0_temp_set.txt") do (
+        echo set "%%a=%%b"
     )
-)
+) >> "%~dp0cache\%WT_SESSION%.bat"
+del "%~dp0_temp_set.txt"
 
-@REM Second: Export all environment variables (restoration phase)
-@REM Use consistent uppercase for environment variable names
-for /f "delims==" %%a in ('set') do (
-    for /f "delims=" %%b in ('cmd /c "echo %%%%a%%"') do (
-        @REM Convert variable name to uppercase for consistency
-        for %%c in (%%a) do echo set "%%c=%%b" >> "%~dp0cache\%WT_SESSION%.bat"
-    )
-)
+echo Save Envs: %WT_SESSION%.bat
 
-echo Save Envs: [90;4m%WT_SESSION%.bat[0m
-
-@REM Load path.ini using pure CMD commands (most efficient)
+@REM Load path.ini using optimized method
 set "_PATH_INI=%~dp0envs\%~2\path.ini"
 if exist "%_PATH_INI%" (
-    @REM Use type and findstr to filter comments and empty lines with reverse output
-    @REM Reverse output ensures paths are added in config file order to PATH beginning
+    @REM Batch process paths for better performance
+    set "_NEW_PATH="
     for /f "delims=" %%a in ('type "%_PATH_INI%" ^| findstr /v "^# ^; ^$"') do (
         @REM Check if path exists (unless force is enabled)
         if "%_MY_FORCE%"=="0" (
             if not exist "%%a" (
-                echo [33mSkip path: [0m[90;4m%%a[0m
+                echo Skip path: %%a
             ) else (
-                @REM Add path to the beginning of PATH (reverse order ensures config file order)
-                echo  [32mAdd path: [0m[90;4m%%a[0m
-                call set "PATH=%%a;%%PATH%%"
+                echo Add path: %%a
+                if defined _NEW_PATH (
+                    set "_NEW_PATH=%%a;!_NEW_PATH!"
+                ) else (
+                    set "_NEW_PATH=%%a"
+                )
             )
         ) else (
             @REM Force mode - add path regardless of existence
-            echo  [32mAdd path: [0m[90;4m%%a[0m
-            call set "PATH=%%a;%%PATH%%"
+            echo Add path: %%a
+            if defined _NEW_PATH (
+                set "_NEW_PATH=%%a;!_NEW_PATH!"
+            ) else (
+                set "_NEW_PATH=%%a"
+            )
         )
+    )
+    
+    @REM Update PATH in one operation
+    if defined _NEW_PATH (
+        set "PATH=!_NEW_PATH!;%PATH%"
+        set "_NEW_PATH="
     )
 )
 
 @REM Get current environment variables BEFORE setting new ones
 > "%~dp0_temp_env.txt" set
 
-@REM Load variable.ini using pure CMD commands
+@REM Load variable.ini using optimized method
 if exist "%~dp0envs\%~2\variable.ini" (
-    @REM Use type and findstr to filter comments and empty lines, then process key=value pairs
+    @REM Process variable.ini in one pass
     for /f "tokens=1,2 delims==" %%a in ('type "%~dp0envs\%~2\variable.ini" ^| findstr /v "^# ^; ^$"') do (
         @REM Set the new value
         set "%%a=%%b"
@@ -149,10 +144,10 @@ set "PROMPT=[%~2] %PROMPT%"
 set _MY_ENV_ACTIVATED=1
 set _MY_CURRENT_ENV=%~2
 
-@REM Display environment variables
-call :SHOW_ENV_VARIABLES "%~2" "%~dp0_temp_env.txt"
+@REM Display environment variables with optimized method
+call :SHOW_ENV_VARIABLES_OPTIMIZED "%~2" "%~dp0_temp_env.txt"
 
-echo [90m Activate: [0m`%~2` [92msuccess.[0m
+echo Activate: %~2 success.
 
 @REM Cleanup temporary file
 if exist "%~dp0_temp_env.txt" del "%~dp0_temp_env.txt"
@@ -164,7 +159,7 @@ goto :EOF
 
 :DEACTIVATE_ENV
 if not defined _MY_ENV_ACTIVATED (
-    echo [31mError: No env active.[0m
+    echo Error: No env active.
     goto :EOF
 )
 
@@ -172,11 +167,11 @@ if not defined _MY_ENV_ACTIVATED (
 
 @REM Restore environment from WT_SESSION.bat file
 if exist "%~dp0cache\%WT_SESSION%.bat" (
-    echo Reloading: [90;4m%WT_SESSION%.bat[0m
+    echo Reloading: %WT_SESSION%.bat
     call "%~dp0cache\%WT_SESSION%.bat"
     del "%~dp0cache\%WT_SESSION%.bat"
 ) else (
-    echo [33mWarning: Env history file not found:[0m [90;4m%WT_SESSION%.bat[0m
+    echo Warning: Env history file not found: %WT_SESSION%.bat
 )
 
 @REM Restore original PROMPT
@@ -188,30 +183,13 @@ if defined _MY_OLD_PROMPT (
 @REM Clear activation flags
 set "_MY_ENV_ACTIVATED="
 
-echo [90mDeactivat: [0m`%_MY_CURRENT_ENV%` [92msuccess.[0m
+echo Deactivate: %_MY_CURRENT_ENV% success.
 set "_MY_CURRENT_ENV="
 goto :EOF
 
-:CHECK_VAR_EXISTS
-@REM Subroutine to check if variable exists in environment history file
-@REM Parameters: %1 = variable name, %2 = environment history file
-setlocal
-set "_TEMP_FILE=%~dp0_check.tmp"
-> "%_TEMP_FILE%" type "%~2"
-cmd /c "findstr /C:\"set \\\"%~1=\" \"%_TEMP_FILE%\" >nul 2>nul"
-if errorlevel 1 (
-    if exist "%_TEMP_FILE%" del "%_TEMP_FILE%"
-    endlocal
-    exit /b 1
-) else (
-    if exist "%_TEMP_FILE%" del "%_TEMP_FILE%"
-    endlocal
-    exit /b 0
-)
-
 :CACHE_MANAGEMENT
 if "%~2"=="" (
-    echo [31mError: Usage: my cache list,clear[0m
+    echo Error: Usage: my cache list,clear
     goto :EOF
 )
 
@@ -220,14 +198,14 @@ if "%~2" equ "list" goto CACHE_LIST
 if "%~2" equ "c" goto CACHE_CLEAR
 if "%~2" equ "clear" goto CACHE_CLEAR
 
-echo [31mError: Unknown cache command "[0m[5m%~2[0m[31m". Use "list" or "clear".[0m
+echo Error: Unknown cache command "%~2". Use "list" or "clear".
 goto :EOF
 
 :CACHE_LIST
-echo [90mCache files:[0m
+echo Cache files:
 set "_CACHE_DIR=%~dp0cache"
 if not exist "%_CACHE_DIR%" (
-    echo   [33mNo cache directory found.[0m
+    echo   No cache directory found.
     set "_CACHE_DIR="
     goto :EOF
 )
@@ -235,23 +213,23 @@ if not exist "%_CACHE_DIR%" (
 @REM List all cache files
 dir /b "%_CACHE_DIR%\*.bat" >nul 2>nul
 if errorlevel 1 (
-    echo   [33mNo cache files found.[0m
+    echo   No cache files found.
     set "_CACHE_DIR="
     goto :EOF
 )
 
 echo.
 for /f "delims=" %%f in ('dir /b "%_CACHE_DIR%\*.bat"') do (
-    echo   [90m[4m%%f[0m
+    echo   %%f
 )
 set "_CACHE_DIR="
 goto :EOF
 
 :CACHE_CLEAR
-echo [90mCache files:[0m
+echo Cache files:
 set "_CACHE_DIR=%~dp0cache"
 if not exist "%_CACHE_DIR%" (
-    echo   [33mNo cache directory found.[0m
+    echo   No cache directory found.
     set "_CACHE_DIR="
     goto :EOF
 )
@@ -259,21 +237,21 @@ if not exist "%_CACHE_DIR%" (
 @REM List all cache files
 dir /b "%_CACHE_DIR%\*.bat" >nul 2>nul
 if errorlevel 1 (
-    echo   [33mNo cache files found.[0m
+    echo   No cache files found.
     set "_CACHE_DIR="
     goto :EOF
 )
 
 echo.
 for /f "delims=" %%f in ('dir /b "%_CACHE_DIR%\*.bat"') do (
-    echo   [90m[4m%%f[0m
+    echo   %%f
 )
 
 echo.
-echo [33mWarning: Delete all cache files.[0m
+echo Warning: Delete all cache files.
 set /p "_CONFIRM=Delete all cache files? (y/N): "
 if /i not "%_CONFIRM%"=="y" (
-    echo [90mOperation cancelled.[0m
+    echo Operation cancelled.
     set "_CACHE_DIR="
     set "_CONFIRM="
     goto :EOF
@@ -283,33 +261,33 @@ if /i not "%_CONFIRM%"=="y" (
 for /f "delims=" %%f in ('dir /b "%_CACHE_DIR%\*.bat"') do (
     del "%_CACHE_DIR%\%%f" >nul 2>nul
     if errorlevel 1 (
-        echo [31mFailed to delete: [0m[90m%%f[0m
+        echo Failed to delete: %%f
     ) else (
-        echo [92mDeleted: [0m[90m%%f[0m
+        echo Deleted: %%f
     )
 )
 
-echo [92mCache cleared.[0m
+echo Cache cleared.
 set "_CACHE_DIR="
 set "_CONFIRM="
 goto :EOF
 
 :SHOW_ERROR
-echo [31mError: Unknown command "[0m[5m%~1[0m[31m".[0m
+echo Error: Unknown command "%~1".
 :SHOW_HELP
-echo [90mUsage:[0m
-echo     my [96m list[0m             [90m- [l/list]          [0m
-echo     my [92m  add[0m [env_name]  [90m- [a/add/activate]  [0m
-echo     my [93m  del[0m             [90m- [d/del/deactivate][0m
-echo     my [36mcache[0m list        [90m- [c l]             [0m
-echo     my [36mcache[0m clear       [90m- [c c]             [0m
-echo     my [0m help[0m             [90m- [h/help]          [0m
-echo [90mParams:[0m
-echo     --[0m[95mforce[0m              [90m- [-f/--force][0m
+echo Usage:
+echo     my list             - [l/list]
+echo     my add [env_name]  - [a/add/activate]
+echo     my del             - [d/del/deactivate]
+echo     my cache list        - [c l]
+echo     my cache clear       - [c c]
+echo     my help             - [h/help]
+echo Params:
+echo     --force              - [-f/--force]
 goto :EOF
 
-:SHOW_ENV_VARIABLES
-@REM Display environment variables with color coding
+:SHOW_ENV_VARIABLES_OPTIMIZED
+@REM Optimized version of environment variable display
 @REM Parameters: %1 = environment name, %2 = temporary environment file
 setlocal enabledelayedexpansion
 
@@ -319,21 +297,18 @@ if not exist "%~dp0envs\%~1\variable.ini" (
     goto :EOF
 )
 
-@REM Read variable.ini and process each variable
-set "_NEW_VARS=0"
-set "_EXISTING_VARS=0"
-
-@REM Calculate maximum variable name length for alignment
+@REM Pre-calculate maximum variable name length
 set "_MAX_NAME_LEN=0"
 for /f "tokens=1,2 delims==" %%a in ('type "%~dp0envs\%~1\variable.ini" ^| findstr /v "^# ^; ^$"') do (
-    set "_NAME_LEN=%%a"
-    call :GET_STRING_LENGTH "!_NAME_LEN!"
+    set "_VAR_NAME=%%a"
+    call :GET_STRING_LENGTH_FAST "!_VAR_NAME!"
     if !_LENGTH! gtr !_MAX_NAME_LEN! set "_MAX_NAME_LEN=!_LENGTH!"
 )
 
-@REM Display environment variables
+@REM Display environment variables with optimized processing
+set "_NEW_VARS=0"
+set "_EXISTING_VARS=0"
 
-@REM Use type and findstr to process variable.ini file
 for /f "tokens=1,2 delims==" %%a in ('type "%~dp0envs\%~1\variable.ini" ^| findstr /v "^# ^; ^$"') do (
     @REM Check if variable already exists in current environment
     set "_VAR_EXISTS=0"
@@ -341,20 +316,20 @@ for /f "tokens=1,2 delims==" %%a in ('type "%~dp0envs\%~1\variable.ini" ^| finds
         if /i "%%x"=="%%a" set "_VAR_EXISTS=1"
     )
     
-    @REM Calculate padding for alignment
-    set "_NAME_LEN=%%a"
-    call :GET_STRING_LENGTH "!_NAME_LEN!"
+    @REM Calculate padding using fast method
+    set "_VAR_NAME=%%a"
+    call :GET_STRING_LENGTH_FAST "!_VAR_NAME!"
     set /a _PADDING=!_MAX_NAME_LEN! - !_LENGTH!
     set "_SPACES="
     for /l %%i in (1,1,!_PADDING!) do set "_SPACES=!_SPACES! "
     
     if !_VAR_EXISTS! equ 1 (
-        @REM Update existing variable - show in yellow
-        echo [33mRnew vari:[0m %%a!_SPACES! = %%b
+        @REM Update existing variable
+        echo Rnew vari: %%a!_SPACES! = %%b
         set /a _EXISTING_VARS+=1
     ) else (
-        @REM Add new variable - show in green
-        echo  [32mAdd vari:[0m %%a!_SPACES! = %%b
+        @REM Add new variable
+        echo Add vari: %%a!_SPACES! = %%b
         set /a _NEW_VARS+=1
     )
 )
@@ -362,18 +337,23 @@ for /f "tokens=1,2 delims==" %%a in ('type "%~dp0envs\%~1\variable.ini" ^| finds
 endlocal
 goto :EOF
 
-:GET_STRING_LENGTH
-@REM Subroutine to get string length
+:GET_STRING_LENGTH_FAST
+@REM Optimized string length calculation
 @REM Parameters: %1 = string to measure
-setlocal enabledelayedexpansion
+setlocal
 set "_STR=%~1"
 set "_LENGTH=0"
-:LOOP
-if not "!_STR!"=="" (
-    set "_STR=!_STR:~1!"
-    set /a _LENGTH+=1
-    goto LOOP
+
+@REM Fast length calculation using string manipulation
+if defined _STR (
+    set "_LENGTH=1"
+    :FAST_LOOP
+    if not "!_STR:~%_LENGTH%!"=="" (
+        set /a _LENGTH+=1
+        goto FAST_LOOP
+    )
 )
+
 endlocal & set "_LENGTH=%_LENGTH%"
 goto :EOF
 
