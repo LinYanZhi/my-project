@@ -109,26 +109,51 @@ echo Save Envs: [90;4m%WT_SESSION%.bat[0m
 
 @REM Load path.ini using pure CMD commands (most efficient)
 set "_PATH_INI=%~dp0envs\%~2\path.ini"
+set "_USER_PATHS_FILE=%~dp0_user_paths.tmp"
+if exist "%_USER_PATHS_FILE%" del "%_USER_PATHS_FILE%"
 if exist "%_PATH_INI%" (
-    @REM Use type and findstr to filter comments and empty lines with reverse output
-    @REM Reverse output ensures paths are added in config file order to PATH beginning
+    @REM Use type and findstr to filter comments and empty lines
+    @REM Collect paths in order to maintain config file order
     for /f "delims=" %%a in ('type "%_PATH_INI%" ^| findstr /v "^# ^; ^$"') do (
-        @REM Check if path exists (unless force is enabled)
+        @REM Check if path is a network path (starts with \\)
+        set "_IS_NETWORK=0"
+        call :DETECT_NETWORK_PATH "%%a"
+
+        @REM Network paths are always added without existence check to avoid timeout
+        @REM Local paths are checked for existence (unless force is enabled)
         if "%_MY_FORCE%"=="0" (
-            if not exist "%%a" (
-                echo [33mSkip path: [0m[90;4m%%a[0m
-            ) else (
-                @REM Add path to the beginning of PATH (reverse order ensures config file order)
+            call :CHECK_IS_NETWORK
+            if errorlevel 1 (
+                @REM Network path - skip existence check to avoid timeout
                 echo  [32mAdd path: [0m[90;4m%%a[0m
-                call set "PATH=%%a;%%PATH%%"
+                echo %%a>> "%_USER_PATHS_FILE%"
+            ) else (
+                @REM Local path - check existence
+                if not exist "%%a" (
+                    echo [33mSkip path: [0m[90;4m%%a[0m
+                ) else (
+                    echo  [32mAdd path: [0m[90;4m%%a[0m
+                    echo %%a>> "%_USER_PATHS_FILE%"
+                )
             )
         ) else (
-            @REM Force mode - add path regardless of existence
+            @REM Force mode - add all paths regardless of existence
             echo  [32mAdd path: [0m[90;4m%%a[0m
-            call set "PATH=%%a;%%PATH%%"
+            echo %%a>> "%_USER_PATHS_FILE%"
         )
+        set "_IS_NETWORK="
     )
 )
+
+@REM Add user paths to the beginning of PATH (before system paths)
+@REM Read file in reverse order to maintain config file order
+if exist "%_USER_PATHS_FILE%" (
+    for /f "usebackq delims=" %%a in (`powershell -Command "$lines = Get-Content '%_USER_PATHS_FILE%'; [Array]::Reverse($lines); $lines"`) do (
+        call set "PATH=%%a;%%PATH%%"
+    )
+    del "%_USER_PATHS_FILE%"
+)
+set "_USER_PATHS_FILE="
 
 @REM Get current environment variables BEFORE setting new ones
 > "%~dp0_temp_env.txt" set
@@ -161,6 +186,22 @@ if exist "%~dp0_temp_env.txt" del "%~dp0_temp_env.txt"
 set "_PATH_INI="
 set "_MY_FORCE="
 goto :EOF
+
+:DETECT_NETWORK_PATH
+@REM Subroutine to detect if a path is a network path
+@REM Parameters: %1 = path to check
+@REM Sets: _IS_NETWORK to 1 if network path, 0 otherwise
+set "_IS_NETWORK=0"
+set "_CHECK_PATH=%~1"
+if "%_CHECK_PATH:~0,2%"=="\\" set "_IS_NETWORK=1"
+set "_CHECK_PATH="
+exit /b 0
+
+:CHECK_IS_NETWORK
+@REM Subroutine to check if current path is a network path
+@REM Returns: exit code 1 if network path, 0 otherwise
+if "%_IS_NETWORK%"=="1" exit /b 1
+exit /b 0
 
 :DEACTIVATE_ENV
 if not defined _MY_ENV_ACTIVATED (
