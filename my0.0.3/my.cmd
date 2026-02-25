@@ -146,9 +146,9 @@ if exist "%_PATH_INI%" (
 )
 
 @REM Add user paths to the beginning of PATH (before system paths)
-@REM Read file in reverse order to maintain config file order
+@REM Read file in order and add each to PATH beginning
 if exist "%_USER_PATHS_FILE%" (
-    for /f "usebackq delims=" %%a in (`powershell -Command "$lines = Get-Content '%_USER_PATHS_FILE%'; [Array]::Reverse($lines); $lines"`) do (
+    for /f "usebackq delims=" %%a in ("%_USER_PATHS_FILE%") do (
         call set "PATH=%%a;%%PATH%%"
     )
     del "%_USER_PATHS_FILE%"
