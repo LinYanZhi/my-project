@@ -7,7 +7,10 @@
 
 @REM Generate WT_SESSION if not defined
 if not defined WT_SESSION (
-    for /f "delims=" %%g in ('powershell -Command "[System.Guid]::NewGuid().ToString()"') do set WT_SESSION=%%g
+    @REM Use pure CMD to generate unique session ID
+    for /f "tokens=2 delims==" %%a in ('wmic os get localdatetime /value') do set "_DATETIME=%%a"
+    set "WT_SESSION=%_DATETIME:~0,8%_%_DATETIME:~8,6%_%RANDOM%"
+    set "_DATETIME="
 )
 
 @REM Check if already activated (only for add commands)
@@ -98,10 +101,10 @@ if exist "%~dp0envs\%~2\variable.ini" (
 
 @REM Second: Export all environment variables (restoration phase)
 @REM Use consistent uppercase for environment variable names
-for /f "delims==" %%a in ('set') do (
-    for /f "delims=" %%b in ('cmd /c "echo %%%%a%%"') do (
-        @REM Convert variable name to uppercase for consistency
-        for %%c in (%%a) do echo set "%%c=%%b" >> "%~dp0cache\%WT_SESSION%.bat"
+@REM Write all variables at once for better performance
+>> "%~dp0cache\%WT_SESSION%.bat" (
+    for /f "tokens=1* delims==" %%a in ('set') do (
+        echo set "%%a=%%b"
     )
 )
 
@@ -154,9 +157,7 @@ if exist "%_USER_PATHS_FILE%" (
     del "%_USER_PATHS_FILE%"
 )
 set "_USER_PATHS_FILE="
-
-@REM Get current environment variables BEFORE setting new ones
-> "%~dp0_temp_env.txt" set
+set "_PATH_INI="
 
 @REM Load variable.ini using pure CMD commands
 if exist "%~dp0envs\%~2\variable.ini" (
@@ -175,12 +176,9 @@ set _MY_ENV_ACTIVATED=1
 set _MY_CURRENT_ENV=%~2
 
 @REM Display environment variables
-call :SHOW_ENV_VARIABLES "%~2" "%~dp0_temp_env.txt"
+call :SHOW_ENV_VARIABLES "%~2"
 
 echo [90m Activate: [0m`%~2` [92msuccess.[0m
-
-@REM Cleanup temporary file
-if exist "%~dp0_temp_env.txt" del "%~dp0_temp_env.txt"
 
 @REM Clear temporary variables
 set "_PATH_INI="
@@ -351,7 +349,7 @@ goto :EOF
 
 :SHOW_ENV_VARIABLES
 @REM Display environment variables with color coding
-@REM Parameters: %1 = environment name, %2 = temporary environment file
+@REM Parameters: %1 = environment name
 setlocal enabledelayedexpansion
 
 @REM Get environment variables from variable.ini
@@ -364,40 +362,12 @@ if not exist "%~dp0envs\%~1\variable.ini" (
 set "_NEW_VARS=0"
 set "_EXISTING_VARS=0"
 
-@REM Calculate maximum variable name length for alignment
-set "_MAX_NAME_LEN=0"
-for /f "tokens=1,2 delims==" %%a in ('type "%~dp0envs\%~1\variable.ini" ^| findstr /v "^# ^; ^$"') do (
-    set "_NAME_LEN=%%a"
-    call :GET_STRING_LENGTH "!_NAME_LEN!"
-    if !_LENGTH! gtr !_MAX_NAME_LEN! set "_MAX_NAME_LEN=!_LENGTH!"
-)
-
-@REM Display environment variables
-
+@REM Display environment variables without alignment for better performance
 @REM Use type and findstr to process variable.ini file
 for /f "tokens=1,2 delims==" %%a in ('type "%~dp0envs\%~1\variable.ini" ^| findstr /v "^# ^; ^$"') do (
-    @REM Check if variable already exists in current environment
-    set "_VAR_EXISTS=0"
-    for /f "usebackq tokens=1 delims==" %%x in ("%~2") do (
-        if /i "%%x"=="%%a" set "_VAR_EXISTS=1"
-    )
-    
-    @REM Calculate padding for alignment
-    set "_NAME_LEN=%%a"
-    call :GET_STRING_LENGTH "!_NAME_LEN!"
-    set /a _PADDING=!_MAX_NAME_LEN! - !_LENGTH!
-    set "_SPACES="
-    for /l %%i in (1,1,!_PADDING!) do set "_SPACES=!_SPACES! "
-    
-    if !_VAR_EXISTS! equ 1 (
-        @REM Update existing variable - show in yellow
-        echo [33mRnew vari:[0m %%a!_SPACES! = %%b
-        set /a _EXISTING_VARS+=1
-    ) else (
-        @REM Add new variable - show in green
-        echo  [32mAdd vari:[0m %%a!_SPACES! = %%b
-        set /a _NEW_VARS+=1
-    )
+    @REM Always show as added (simplified for speed)
+    echo  [32mAdd var :[0m %%a = %%b
+    set /a _NEW_VARS+=1
 )
 
 endlocal
