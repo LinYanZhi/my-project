@@ -20,8 +20,8 @@ REM UV Tool
 REM C:\Users\LinYanZhi\.local\bin
 
 REM virtual machine
-set "PATH=%PATH%\\LINYANZHI-Venv\Users\LinYanZhi\Envs\mingw64\bin;"
-set "PATH=%PATH%\\LINYANZHI-Venv\Users\LinYanZhi\Envs\Go\bin;"
+@REM set "PATH=%PATH%\\LINYANZHI-Venv\Users\LinYanZhi\Envs\mingw64\bin;"
+@REM set "PATH=%PATH%\\LINYANZHI-Venv\Users\LinYanZhi\Envs\Go\bin;"
 
 REM Nvm
 set "PATH=%PATH%C:\Users\LinYanZhi\AppData\Roaming\nvm;"
